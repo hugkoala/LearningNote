@@ -71,8 +71,6 @@ dls = ImageDataLoaders.from_name_func('.',
     label_func=RegexLabeller(pat = r'^([^/]+)_\d+'),
     item_tfms=Resize(224))
 
-dls.show_batch(max_n=4)
-
 learn = vision_learner(dls, resnet34, metrics=error_rate)
 learn.fine_tune(3)
 ```
@@ -95,12 +93,15 @@ learn.fine_tune(3)
 learn.export('model.pkl')
 ```
 
+[Convnext documentation](https://course.fast.ai/Lessons/lesson3.html)
+
 ### Models trained on ImageNet-22k, fine-tuned on ImageNet-1k
 convnext_tiny_in22ft1k
 ### Models trained on ImageNet-22k, fine-tuned on ImageNet-1k at 384 resolution
 convnext_tiny_384_in22ft1k
-### ConvNeXt Tiny model architecture from the A ConvNet for the 2020s paper.
-convnext_tiny
+
+covnext_{stochastic depth rate}
+
 
 
 ## Use your model to predict
@@ -212,9 +213,7 @@ def plot_quad(a, b, c):
 
 ### better or worse
 ```
-# Loss function
-# 最簡單常見是 均方誤差 Mean-Square Error, MSE
-def mae(preds, acts): return ((preds-acts)**2).mean()
+def mae(preds, acts): return (torch.abs(preds-acts)).mean()
 ```
 
 ```
@@ -291,7 +290,7 @@ step=9; loss=6.31
 
 ### How a neural network approximates any given function
 ```
-# rectified linear unit(ReLU)
+# 線性整流函式在基於斜坡函式的基礎上有其他同樣被廣泛應用於深度學習的變種，譬如帶泄露線性整流(Leaky ReLU)，帶泄露隨機線性整流(Randomized Leaky ReLU)，以及噪聲線性整流(Noisy ReLU)
 def rectified_linear(m,b,x):
     y = m*x+b
     return torch.clip(y, 0.)
@@ -334,7 +333,7 @@ def plot_double_relu(m1, b1, m2, b2):
 嘗試更好的架構會是最後一件事
 
 非監督學習
-=>很容易獲得大量輸入，但很難獲得大量輸出
+=>機器學習的一種方法，沒有給定事先標記過的訓練範例，自動對輸入的資料進行分類或分群。
 
 ### Matrix Multiplication
 [Matrix Multiplication](http://matrixmultiplication.xyz/)
@@ -629,55 +628,8 @@ valid_y = tensor([1]*len(valid_3_tens) + [0]*len(valid_7_tens)).unsqueeze(1)
 valid_dset = list(zip(valid_x,valid_y))
 ```
 
-```
-def init_params(size, std=1.0): return (torch.randn(size)*std).requires_grad_()
+我們希望權重產生好一點的預測，損失函數可以產生好一點的損失，以該例來說，正確答案是3，分數就會高一些，反之，分數就會低一些
 
-weights = init_params((28*28,1))
-bias = init_params(1)
-```
-
-```
-# @ 代表矩陣相乘，Python 3.5版本中引入
-def linear1(xb): return xb@weights + bias
-preds = linear1(train_x)
-preds
-tensor([[-17.2310],
-        [ -4.8000],
-        [ -6.9087],
-        ...,
-        [ -4.9022],
-        [ -8.8597],
-        [-12.9866]], grad_fn=<AddBackward0>)
-```
-
-```
-corrects = (preds>0.0).float() == train_y
-corrects
-tensor([[False],
-        [False],
-        [False],
-        ...,
-        [ True],
-        [ True],
-        [ True]])
-
-corrects.float().mean().item()
-0.5546950697898865
-```
-
-```
-# 針對某個權重調整
-with torch.no_grad(): weights[0] *= 1.0001
-
-preds = linear1(train_x)
-((preds>0.0).float() == train_y).float().mean().item()
-0.5546950697898865
-```
-(y_new - y_old) / (x_new - x_old)
-當x_new微幅變成x_old，y_new-y_old幾乎都是0，也就是所有梯度都是0
-微幅改變權重通常不會改變準確度，也就是準確度不適合拿來當損失函數，因為這種狀況，也會導致模型無法用這個數字學東西
-
-損失函數目的是測量預測值和實際值的差距
 ```
 def mnist_loss(predictions, targets):
     # where(a, b, c) => (a) ? b : c
