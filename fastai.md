@@ -11,9 +11,7 @@
 3. 準確度多高
 
 ### timm
-> **PyTorch Image Models (timm) is a wonderful library by Ross Wightman which provides state-of-the-art pre-trained computer vision models**. It's like Huggingface Transformers, but for computer vision instead of NLP (and it's not restricted to transformers-based models)!
-
-> Ross has been kind enough to help me understand how to best take advantage of this library by identifying the top models. I'm going to share here so of what I've learned from him, plus some additional ideas.
+> **PyTorch Image Models (timm) is a wonderful library by Ross Wightman which provides state-of-the-art pre-trained computer vision models**.
 
 ```
 # Get all models
@@ -74,7 +72,8 @@ dls = ImageDataLoaders.from_name_func('.',
 learn = vision_learner(dls, resnet34, metrics=error_rate)
 learn.fine_tune(3)
 ```
-![](https://i.imgur.com/u20cjlX.png)
+![](https://i.imgur.com/AjCL2oa.png)
+
 
 ```
 # list all converxt* model
@@ -87,7 +86,8 @@ timm.list_models('convnext*')
 learn = vision_learner(dls, 'convnext_tiny_in22k', metrics=error_rate).to_fp16()
 learn.fine_tune(3)
 ```
-![](https://i.imgur.com/4ohYbud.png)
+![](https://i.imgur.com/EHs50tr.png)
+
 
 ```
 learn.export('model.pkl')
