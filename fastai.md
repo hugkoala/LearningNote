@@ -149,8 +149,6 @@ intf.launch(inline=False)
 ```
 m = learn.model
 m
-# model.pkl 有2個主要的部份，分別為預處理的步驟列表和
-# 本身由層組成
 ```
 ![](https://i.imgur.com/rUgOF0A.png)
 ```
@@ -262,7 +260,10 @@ tensor([-11.3866,  -0.1188,  -3.8409])
 # 0.01 為 learning rate
 with torch.no_grad():
     abc -= abc.grad*0.01
-    loss = quad_mae(abc)
+```
+
+```
+loss = quad_mae(abc)
     
 print(f'loss={loss:.2f}')
 loss=5.40
@@ -320,13 +321,13 @@ def plot_double_relu(m1, b1, m2, b2):
 ```
 ![](https://i.imgur.com/GwpbSbz.png)
 
-透過簡單的基礎(ReLU)，可以建立一個任意的、準確的、精確的模型
+透過簡單的基礎，可以建立一個任意的、準確的、精確的模型
 但是需要參數，我們可以使用梯度下降
 
 ### How to draw an owl
 ![](https://i.imgur.com/PajkYPR.png)
 
-將ReLU相加，用梯度下降優化參數，輸入想要的輸入和輸出，就能畫出貓頭鷹
+將n個線性相加，用梯度下降優化參數，輸入想要的輸入和輸出，就能畫出貓頭鷹
 
 ### try out all model and find the best performing one
 可以用最快的方式嘗試大量外部數據，並清理數據
@@ -573,7 +574,9 @@ Step 5: Step the weights.
 lr = 1e-5
 params.data -= lr * params.grad.data
 params.grad = None
+```
 
+```
 preds = f(time,params)
 mse(preds, speed)
 tensor(692.0293, grad_fn=<MeanBackward0>)
