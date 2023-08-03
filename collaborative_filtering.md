@@ -1,41 +1,15 @@
-#1 part3 #2 part4 #3 deep dive
 
-GPU不像CPU那麼聰明
-如果嘗試將模型擴展到更大的模型，除非你有更昂貴的GPU，不然就會用完 並收到 memory不足
-call python gc pytorch empty_cache() 基本上可以不重啟的情況開始
-記憶體不足 該做什麼  可以用 grandient accumulation
-#1 [5] -> 下面說明
-梯度累積的結果在數值上相同嗎 對於特定架構來說 數字上是相同 有種東西叫批量歸一化 他追蹤標準差喊平均值的移動平均值 並以數學上稍微不正確的方式進行 因此你進行批量歸依化  基本上會引入更多的波動性 但由於在數學上並不相同 因此你不一定得到相同結果 
-convnext 不使用批量規一化
-實踐中為 convnext 添加梯度累積沒有帶來任何問題，因此執行時候不必更改任何參數
-經驗法則將批量大小除以2 學習率也除以2 但不幸 並不完美
-
-#2 [6] 假如傳進去3個block fastai不知道哪個是自變亮 哪個是因變量
-#2 [8] cross_entropy
-cross_entropy excel softmax
-#2 [11] 
-
-#3 [5] dot product
-collab_filter excel
-matrix completion
-#3 [18]
-dot product 有超過5的，雖然沒有sigmoid 已經很好 但是如果放進sigmoid 會更好
-#3 [22]使用sigmoid_range 然後為什麼使用0~5.5 而不是5 因為sigmoid 永遠不會到5 所以為了讓我們最高值大一點
-但目前dot product沒有方法能說用戶傾向於給低分或高分
-#3 [24] 這時候我們在因子增加了偏移項
-#3 [25]為什麼變得更糟，所以可能overfit了
-避免overfit的一個經典方法叫做 權重衰減 wight decay 也稱 L2 regularization 當我們計算梯度時，將權重平方和加到loss function
-#3 [26] 算損失的目的就是為了採用她的梯度，因為參數平方的梯度就是參數的兩倍，所以我們只需要將梯度加上wd係數*2*參數
-#3 [27] 在視覺的fastai應用中，會適當的設定預設值，通常做得不錯，只要使用預設值就好，但在表格或是collaborative filtering，對數據不夠了解 不知道在這裡使用什麼 所以可能嘗試10的幾個倍數 從 0.1 除以10幾次 看哪個結果最好
 
 ## Understanding GPU memory usage
+GPU不像CPU那麼聰明 如果嘗試將模型擴展到更大的模型，除非你有更昂貴的GPU，不然就會用完 並收到 memory不足
+
 ```python
 df = pd.read_csv(path/'train.csv')
 df.label.value_counts()
 ```
 ![](https://hackmd.io/_uploads/BJgtkdvqn.png)
 
-選擇最小的，我們只需要337張圖像即可訓練模型，較長時間的訓練不會使用更多內存，因此使用最小的訓練集，我們就能知道這個模型使用多少記憶體
+選擇最小的疾病，我們只需要337張圖像即可訓練模型，傳遞的每張圖片大小相同，每個批次大小相同，較長時間的訓練不會使用更多內存，因此使用最小的訓練集，我們就能知道這個模型使用多少記憶體
 ```python
 trn_path = path/'train_images'/'bacterial_panicle_blight'
 train('convnext_small_in22k', 128, epochs=1, accum=1, finetune=False)
@@ -96,7 +70,7 @@ for x,y in dl:
 ```
 Q:梯度累積的結果在數值上相同嗎?
 A:在這個特定的架構來說，數字是相同的
-batch normalization follow 標準差和平均的滾動平均值以一種數學上稍微不正確的方式進行，因此進行了batch normalization，基本上會有更多波動，，但這不一定是壞事，因為在數學上不相同，因此你不會得到相同結果，Convnext不使用batch normalization，因此梯度累積數值是相同的
+批量歸一化 他追蹤標準差喊平均值的移動平均值 並以數學上稍微不正確的方式進行 因此你進行批量歸依化  基本上會引入更多的波動性 但由於在數學上並不相同 因此你不一定得到相同結果 Convnext不使用batch normalization，因此梯度累積數值是相同的
 
 經驗法則，如果將批輛大小除以2，則學習率也除以2，但不幸的是，他不完美
 
@@ -117,7 +91,7 @@ dls = ImageDataLoaders.from_folder(trn_path, valid_pct=0.2, item_tfms=item,
 
 
 ## Multi-target models
-建立一個能預測疾病也能預測水稻類型
+建立一個能預測疾病也能預測出水稻的類型
 ```python
 df = pd.read_csv(path/'train.csv', index_col='image_id')
 df.head()
@@ -136,9 +110,13 @@ def get_variety(p): return df.loc[p.name, 'variety']
 為了要建立能預測疾病和水稻類型的模型，首先需要具有兩個因變量的data loader
 ```python
 dls = DataBlock(
+    # 哪些是自變量，哪些是因變量
+    # 能放兩個以上
     blocks=(ImageBlock,CategoryBlock,CategoryBlock),
     n_inp=1,    # 告訴DataBlock有幾個輸入
     get_items=get_image_files,
+    # labeling function
+    # 會記住父資料夾的名稱，另外還有品種
     get_y = [parent_label,get_variety],
     splitter=RandomSplitter(0.2, seed=42),
     item_tfms=Resize(192, method='squish'),
@@ -149,9 +127,11 @@ dls = DataBlock(
 ```python
 dls.show_batch(max_n=6)
 ```
-![](https://hackmd.io/_uploads/HJuUVtD53.png)
+![](https://hackmd.io/_uploads/SymNkyVjn.png)
 
-多了疾病和類型，所以不能只使用錯誤率當成指標
+實際上從未有過可以預測兩件事的模型，我們現在想要的會是能預測10種疾病中每種疾病的機率和10種品種中每種品種的機率
+
+我們要複製之前製作的疾病模型，並將這些新數據加進來，關鍵區別在於，指標和損失會收到3件事，因此要定義指標和損失的變化，例如下列疾病，只傳遞疾病
 ```python
 def disease_err(inp,disease,variety): return error_rate(inp,disease)
 ```
@@ -163,20 +143,24 @@ def disease_err(inp,disease,variety): return error_rate(inp,disease)
 ```
 
 softmax 為觸發函數，確保輸出都界在0和1之間，但跟sigmoid不同，softmax還會確保輸出總合為1
+
 [Softmax and cross-entropy](https://docs.google.com/spreadsheets/d/1r22UD-HX5Xw0WWy5eoZ9qEX2u3QT6GDf/edit?usp=sharing&ouid=101736297677687618260&rtpof=true&sd=true)
 
-1.將模型的輸出(output)轉成機率
-2.使用EXP()
-3.加總各輸出的EXP值
-4.將每個輸出的EXP值除以總EXP值(原輸出較大的值，EXP值也會越大，這個值會被推到更接近1，會像是真的在嘗試選擇，因為它具有最大的機率)
-5.在正確的事物實際值為1，其他為0
-6.比較softmax和實際值，如果softmax高，實際值高，我們的損失就越小
-7.計算各類別 實際值*log(預測值)
+1. 將模型的輸出(output)轉成機率
+2. 使用EXP() #指數函數 值域 {y|y>0}
+3. 加總各輸出的EXP值
+4. 將每個輸出的EXP值除以總EXP值(原輸出較大的值，EXP值也會越大，這個值會被推到更接近1，會像是真的在嘗試選擇，因為它具有最大的機率)
+5. 在正確的事物實際值為1，其他為0
+6. 比較softmax和實際值，如果softmax高，實際值高，我們的損失就越小
+7. 計算各類別 實際值*log(預測值)
+
+[CROSSENTROPYLOSS](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html)
 
 ## How to calculate binary-cross-entropy
 
 假如我們只關心疾病，只需要計算輸入和疾病的cross entropy
-data loader回傳多個目標，fastai不知道實際我們model需要幾個輸出，所以必須指定n_out=10
+
+因為有多個目標，所以我們必須說在最後一層創建的輸出數量為10，也就是說最後一個矩陣的大小
 ```python
 def disease_loss(inp,disease,variety): return F.cross_entropy(inp,disease)
 
@@ -190,11 +174,11 @@ learn.fine_tune(5, lr)
 
 ## How to create a learner for prediction two targets
 
+現在我們需要20個輸出
 ```python
 learn = vision_learner(dls, arch, n_out=20).to_fp16()
 ```
 
-input 會有20列
 用了前10列預測疾病
 ```python
 def disease_loss(inp,disease,variety): return F.cross_entropy(inp[:,:10],disease)
@@ -232,6 +216,7 @@ ratings.head()
 ```
 ![](https://hackmd.io/_uploads/BJWJgnP9n.png)
 
+交叉製表，這是相同的信息
 ![](https://hackmd.io/_uploads/HkBsghv5h.png)
 
 ```python
@@ -259,9 +244,11 @@ user1可能不會喜歡casablanca
 
 [Collaborative filterings and embeddings](https://docs.google.com/spreadsheets/d/1HrSxTA3izmAAzWRQRtotLtiTLGqRyX2Q/edit?usp=sharing&ouid=101736297677687618260&rtpof=true&sd=true)
 
-1.假設電影有5個潛在因素，但不知道用途，給隨機數
-2.用戶也有相同的5個潛在因素，同時也給隨機數
-3.假如沒有評分，點積設為0
+collaborative filtering核心是矩陣補齊
+
+1. 假設電影有5個潛在因素，但不知道用途，給隨機數
+2. 用戶也有相同的5個潛在因素，同時也給隨機數
+3. 假如沒有評分，點積設為0
 
 ```python
 movies = pd.read_csv(path/'u.item',  delimiter='|', encoding='latin-1',
@@ -300,6 +287,65 @@ movie_factors = torch.randn(n_movies, n_factors)
 embedding:乘以一個one-hot矩陣，藉著直接進行檢索來實作計算捷徑，乘以one-hot矩陣的東西稱為embedding矩陣
 ```python
 one_hot_3 = one_hot(3, n_users).float()
+```
+```python
+one_hot_3
+```
+tensor([0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0.])
+
+```python
 user_factors.t() @ one_hot_3
 ```
 ![](https://hackmd.io/_uploads/HJumY3P92.png)
@@ -311,6 +357,15 @@ user_factors[3]
 
 ## How to understand the `forward` function
 pytorch將在你的class 呼叫 forward()去做計算
+
+torch.nn.Embedding(num_embeddings, embedding_dim)
+
+nn.Embedding(3, 5)
+{
+0: [.123123, .123123, .123123, .12312, .123123], 
+1: [.456456,.456456,.456456,.456546,.456456,.42342],
+2: [.789789, .987987, .98798, .5789, .7896, .794]
+}
 ```python
 class DotProduct(Module):
     def __init__(self, n_users, n_movies, n_factors):
@@ -383,17 +438,36 @@ learn.fit_one_cycle(5, 5e-3)
 ```
 ![](https://hackmd.io/_uploads/rkUAWpv92.png)
 
+上述的embedding有很多參數，該如何避免overfitting
+
 ## What is weight decay and How does it help
-計算梯度時，將權重平方和加到損失函數
+
+一個overfitting的模型，一般被認為可能具有過度複雜以及不具無意義的pattern。而過度複雜的權重則很可能是這些過於取巧的pattern呈現的方式之一
+
+避免overfit的一個經典方法叫做 權重衰減 wight decay 也稱 L2 regularization，Regularization 是一些避免 overfitting 的方法的總稱
+
+保持權重較小並避免梯度爆炸。因為權重的 L2 norm會添加到損失中，因此網絡的每次迭代除了損失之外還會嘗試優化/最小化模型權重。這將有助於保持權重盡可能小，防止權重增長失控，從而避免梯度爆炸。
+
+當我們計算梯度時，將權重平方和加到loss function
+
+
+係數越大，拋物線就越窄
+y = a * (x**2)
 ![](https://hackmd.io/_uploads/rylGSawc2.png)
 
+
+所以模型使用越大的參數，可能會讓他用太過複雜且劇烈變動來擬和所有資料，導致過擬
+
+實務上，計算這麼大的總和，並加到損失非常低效，可能產生不穩定的數值
+
+算損失的目的就是為了採用她的梯度，因為參數平方的梯度就是參數的兩倍，所以我們只需要將梯度加上wd係數*2*參數
 ```python
 loss_with_wd = loss + wd * (parameter**2).sum()
 
-# 計算損失就是為了計算梯度，parameters平方和的梯度就會是2 * paramters
-parameters.grad = += wd * 2 * parameters
+parameters.grad += wd * 2 * parameters
 ```
 
+在視覺的fastai應用中，會適當的設定預設值，通常做得不錯，只要使用預設值就好，但在表格或是collaborative filtering，對數據不夠了解 不知道在這裡使用什麼 所以可能嘗試10的幾個倍數 從 0.1 除以10幾次 看哪個結果最好
 ```python
 model = DotProductBias(n_users, n_movies, 50)
 learn = Learner(dls, model, loss_func=MSELossFlat())
