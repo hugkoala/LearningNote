@@ -1,13 +1,148 @@
 # Apparmor Example
-## Black List
+## Black 
+![image](https://hackmd.io/_uploads/SJrKqgE8C.png)
+
+
+
+
 ```shell
+#include <tunables/global>
+
+/usr/local/bin/foo flags=(audit) {
+    #include <abstractions/base>
+    
+}
 ```
+
+![image](https://hackmd.io/_uploads/HyKCdgNI0.png)
+
+Result:
+
+![image](https://hackmd.io/_uploads/HytoTx48C.png)
+
+
+```shell
+#include <tunables/global>
+
+/usr/local/bin/foo flags=(audit) {
+    #include <abstractions/base>
+    
+    allow /tmp/read.txt r,
+    allow /tmp/write.txt w,
+}
+```
+Result:
+
+![image](https://hackmd.io/_uploads/rkH5OPVLC.png)
+
+
+
 ## White List
 ```shell
+#include <tunables/global>
+
+/usr/local/bin/foo flags=(audit) {
+    #include <abstractions/base>
+
+    file,
+}
 ```
-## Profile Example
+Result:
+
+![image](https://hackmd.io/_uploads/HyCbhvVIC.png)
+
 ```shell
+#include <tunables/global>
+
+/usr/local/bin/foo flags=(audit) {
+    #include <abstractions/base>
+
+    file,
+    
+    deny /tmp/write.txt r,
+}
 ```
+
+Result:
+![image](https://hackmd.io/_uploads/S1eBaDN8R.png)
+
+
+```shell
+#include <tunables/global>
+
+/usr/local/bin/foo flags=(audit) {
+    #include <abstractions/base>
+
+    file,
+    
+    deny /tmp/write.txt r,
+    
+    allow /tmp/write.txt r,
+}
+```
+
+Result:
+![image](https://hackmd.io/_uploads/Bk7s6DV8A.png)
+
+
+
+## Profile Example
+Result:
+![image](https://hackmd.io/_uploads/Hy9-k9V80.png)
+
+```shell
+#include <tunables/global>
+
+# a comment naming the application to confine
+/usr/local/bin/foo {
+   #include <abstractions/base>
+
+   capability setgid,
+   network inet tcp,
+
+   link /etc/sysconfig/foo -> /etc/foo.conf,
+   /bin/mount            ux,
+   /dev/{,u}random     r,
+   /etc/ld.so.cache      r,
+   /etc/foo/*            r,
+   /lib/ld-*.so*         mr,
+   /lib/lib*.so*         mr,
+   /proc/[0-9]**         r,
+   /usr/lib/**           mr,
+   /tmp/                 r,
+   /tmp/foo.pid          wr,
+   /tmp/foo_test.txt     rw,
+   /tmp/foo.*            lrw,
+   /@{HOME}/.foo_file   rw,
+   /@{HOME}/.foo_lock    kw,
+   owner /shared/foo/** rw,
+   /usr/local/bin/foobar       Cx -> foobar,
+   /bin/**               Px -> bin_generic,
+
+   # a comment about foo's local (children) profile for /usr/local/bin/foobar.
+
+   profile foobar {
+      /bin/bash          rmix,
+      /bin/cat           rmix,
+      /bin/more          rmix,
+      /var/log/foobar*   rwl,
+      /etc/foobar        r,
+      /usr/local/bin/foobar r,
+   }
+
+  # foo's hat, bar.
+   ^bar {
+    /lib/ld-*.so*         mr,
+    /usr/bin/bar          px,
+    /var/spool/*          rwl,
+   }
+}
+```
+
+Result:
+![image](https://hackmd.io/_uploads/r11AFq4U0.png)
+
+
 ## MediaStreamAddon Profile
 ```shell
 #include <tunables/global>
