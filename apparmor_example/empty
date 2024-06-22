@@ -1,0 +1,5 @@
+#include <tunables/global>
+
+/usr/local/bin/foo flags=(audit) {
+    #include <abstractions/base>
+}

@@ -1,0 +1,8 @@
+#include <tunables/global>
+
+/usr/local/bin/foo flags=(audit) {
+    #include <abstractions/base>
+
+    allow /tmp/read.txt r,
+    allow /tmp/write.txt w,
+}
