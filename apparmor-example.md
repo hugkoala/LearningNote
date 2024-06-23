@@ -1,5 +1,5 @@
 # Apparmor Example
-## Black 
+## White List
 ![image](https://hackmd.io/_uploads/SJrKqgE8C.png)
 
 
@@ -37,7 +37,7 @@ Result:
 
 
 
-## White List
+## Black List
 ```shell
 #include <tunables/global>
 
