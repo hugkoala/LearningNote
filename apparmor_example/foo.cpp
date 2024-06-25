@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <sys/apparmor.h>
 
 #include <fstream>
 #include <iostream>
@@ -144,6 +145,28 @@ void profileexample()
     test_file_operations();
     test_network_operations();
     test_subprocess_execution();
+#if 0
+    printf("\n");
+
+    printf("\nChange into subprofile => ^bar\n");
+    unsigned long magic_token = random();
+    if (aa_change_hat("bar", magic_token) == -1) {
+        printf("aa_change_hat:%s\n", strerror(errno));
+    }
+    test_file_operations();
+    test_network_operations();
+    test_subprocess_execution();
+    printf("\n");
+
+    printf("\nChange back to original profile\n");
+    if (aa_change_hat(NULL, magic_token) == -1) {
+        printf("aa_change_hat:%s\n", strerror(errno));
+    }
+    test_file_operations();
+    test_network_operations();
+    test_subprocess_execution();
+    printf("\n");
+#endif
 }
 
 int main(int argc, char *argv[])
