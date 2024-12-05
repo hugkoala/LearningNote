@@ -1,0 +1,41 @@
+SSOT單一事實來源
+自動同步的時程表
+EPIC連結到issue roadmap
+
+
+SAST 靜態分析
+SCA open source library 漏洞
+gitlab不只是個版控工具
+
+merge request dependecy
+security test=> gitlab自己有的 非3rd party
+
+www.GitLabDemo.com
+
+approval settings
+Prevent approval by author
+
+When a commit is added:
+當MR增加新的MR時
+
+container job執行環境
+內建job定義
+
+add .gitlab-ci.yml
+
+issue 可以用AI作內容
+gitlab duo
+從未使用GitLab CI狀態，達成開始使用GitLab CI步驟。用繁體中文回答
+
+https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Jobs/Build.gitlab-ci.yml
+
+gitlab sbom
+
+- template: Security/SAST.gitlab-ci.yml  # https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Security/SAST.gitlab-ci.yml
+#  - template: Security/SAST-IaC.gitlab-ci.yml # https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Security/SAST-IaC.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml  # https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Security/Secret-Detection.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml  # https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Security/Dependency-Scanning.gitlab-ci.yml
+  - template: Security/Container-Scanning.gitlab-ci.yml  # https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Security/Container-Scanning.gitlab-ci.yml
+  
+  
+ 請問所有 Gitlab tier 都支援這些功能嗎?
