@@ -39,3 +39,12 @@ gitlab sbom
   
   
  請問所有 Gitlab tier 都支援這些功能嗎?
+ 
+ security > vulerability report
+ secure > policy > generate policy project > 強制pipeline引進 policy 定義
+ 
+ # 透過note name的前方一致搜尋並返回符合條件的note的method
+ 
+ https://docs.gitlab.com/ee/editor_extensions/visual_studio_code/
+ 
+ /duo_codereview
